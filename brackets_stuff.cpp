@@ -4,6 +4,7 @@
 #include <queue>
 #include <stack>
 #include <string>
+#include <limits>
 
 constexpr auto value_undefined_float = std::numeric_limits<float>::max();
 constexpr auto value_undefined_int = std::numeric_limits<int>::max();
@@ -246,6 +247,7 @@ SidesOfOperation BreakIntoSides(const std::vector<Token::Ptr>& tokens, const uns
 }
 
 struct ExprParseQueueEntry {
+	ExprParseQueueEntry(ExprNode* expr, const unsigned start, const unsigned end) : exprPtr(expr), startInd(start), endInd(end){}
 	ExprNode* exprPtr = nullptr;
 	unsigned startInd = value_undefined_uint;
 	unsigned endInd = value_undefined_uint;
