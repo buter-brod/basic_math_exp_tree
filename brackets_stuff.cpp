@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <map>
@@ -247,30 +248,25 @@ SidesOfOperation BreakIntoSides(const std::vector<Token::Ptr>& tokens, const uns
 }
 
 struct ExprParseQueueEntry {
-	ExprParseQueueEntry(ExprNode* expr, const unsigned start, const unsigned end) : exprPtr(expr), startInd(start), endInd(end){}
+	ExprParseQueueEntry(ExprNode* expr, const unsigned start, const unsigned end) : exprPtr(expr), startInd(start), endInd(end) {}
 	ExprNode* exprPtr = nullptr;
 	unsigned startInd = value_undefined_uint;
 	unsigned endInd = value_undefined_uint;
 };
 
-int main()
+float Calc(const std::string& str)
 {
-	std::string inputExpression = "(2*602 - 55 * (30+4) + 172 / (80 - 2 + 4*2*(-3+4)) - ((1035+1) - 1) - 1)"; // -1700
-	//std::cin >> formula;
-
-	std::cout << "formula: " + inputExpression + "\n";
-
 	// parsing string into tokens first
 	std::vector<Token::Ptr> tokens;
 	unsigned cursor = 0;
 	do
 	{
 		unsigned advance = 0;
-		auto tokenPtr = Token::Tokenize(inputExpression, cursor, advance);
+		auto tokenPtr = Token::Tokenize(str, cursor, advance);
 		tokens.push_back(std::move(tokenPtr));
 		cursor += advance;
 
-	} while (cursor <= inputExpression.size() - 1);
+	} while (cursor <= str.size() - 1);
 
 	// building expression tree from token sequence
 	std::queue<ExprParseQueueEntry> parseQueue;
@@ -332,6 +328,52 @@ int main()
 			calculateStack.push(currExpr->right.get());
 	}
 
-	std::cout << "\nresult: " + std::to_string(rootExprPtr->value) + "\n";
+	const auto result = rootExprPtr->value;
+	return result;
+}
+
+#include "exprtk.hpp"
+
+float CalcExpertk(const std::string& str)
+{
+	exprtk::expression<float> expression;
+	exprtk::parser<float> parser;
+	parser.compile(str, expression);
+	const auto result = expression.value();
+	return result;
+}
+
+int main()
+{
+	const std::string inputExpression = "(2*602 - 55 * (30+4) + 172 / (80 - 2 + 4*2*(-3+4)) - ((1035+1) - 1) - 1)"; // -1700
+	std::cout << "formula: " + inputExpression + "\n";
+
+	constexpr unsigned testsCount = 50000;
+
+	const auto beginTime1 = std::chrono::high_resolution_clock::now();
+	float val1;
+	for (unsigned i = 0; i < testsCount; i++)
+	{
+		const auto result = Calc(inputExpression);
+		val1 = result;
+	}
+
+	const auto endTime1 = std::chrono::high_resolution_clock::now();
+	const auto elapsed1 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime1 - beginTime1).count();
+	std::cout << "\nresult (this implementation): " + std::to_string(val1) + ", time " + std::to_string(elapsed1) + " ms.\n";
+
+	const auto beginTime2 = std::chrono::high_resolution_clock::now();
+
+	float val2;
+	for (unsigned i = 0; i < testsCount; i++)
+	{
+		const auto result = CalcExpertk(inputExpression);
+		val2 = result;
+	}
+
+	const auto endTime2 = std::chrono::high_resolution_clock::now();
+	const auto elapsed2 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime2 - beginTime2).count();
+
+	std::cout << "\nresult (expertk lib): " + std::to_string(val2) + ", time " + std::to_string(elapsed2) + " ms.\n";
 	std::cout << "\n";
 }
