@@ -61,11 +61,11 @@ struct ExprNode {
 	float value = value_undefined_float;
 };
 
-void RuntimeAssert(const bool exp, const std::string& errmsg) {
+void RuntimeAssert(const bool exp, const char* errmsg) {
 	if (exp)
 		return;
 
-	printf("Error: %s, aborting!", errmsg.c_str());
+	printf("Error: %s, aborting!", errmsg);
 
 	// shoot in the foot
 	{
@@ -109,17 +109,17 @@ float ApplyOp(const float left, const float right, const Operation op) {
 
 unsigned GetOperationPriority(const Operation op) {
 
-	static const std::map<Operation, int> priorities = {
-		{ Operation::MINUS, 0 },
-		{ Operation::PLUS,  0 },
-		{ Operation::MUL,   1 },
-		{ Operation::DIV,   1 }
-	};
+	if (op == Operation::MINUS)
+		return 0;
+	if (op == Operation::PLUS)
+		return 0;
+	if (op == Operation::MUL)
+		return 1;
+	if (op == Operation::DIV)
+		return 1;
 
-	const auto priorityIt = priorities.find(op);
-	RuntimeAssert(priorityIt != priorities.end(), "GetOperationPriority not found");
-	const auto priority = priorityIt->second;
-	return priority;
+	RuntimeAssert(false, "GetOperationPriority not found");
+	return 0;
 }
 
 int ReadNumber(const std::string& str, const unsigned cursorStart, unsigned& len) {
@@ -127,22 +127,25 @@ int ReadNumber(const std::string& str, const unsigned cursorStart, unsigned& len
 	RuntimeAssert(!str.empty(), "ReadNumber str empty");
 	RuntimeAssert(cursorStart < str.size(), "ReadNumber cursorStart exceed str len");
 
-	std::string digitAccumStr;
+	const std::string_view strView = str;
+
 	unsigned digitCursor = cursorStart;
 
 	char cAtDigitCursor = str[digitCursor];
 	bool isLocalDigit = isdigit(cAtDigitCursor);
 	while (isLocalDigit) {
 
-		digitAccumStr += cAtDigitCursor;
 		digitCursor++;
 		cAtDigitCursor = str[digitCursor];
 		isLocalDigit = isdigit(cAtDigitCursor);
 	}
 
+	const std::string_view digitAccumStr = strView.substr(cursorStart, digitCursor - cursorStart);
+
 	len = static_cast<unsigned>(digitAccumStr.size());
 
-	const int result = std::atoi(digitAccumStr.c_str());
+	int result;
+	std::from_chars(digitAccumStr.data(), digitAccumStr.data() + digitAccumStr.size(), result);
 	return result;
 };
 
@@ -348,7 +351,7 @@ int main()
 	const std::string inputExpression = "(2*602 - 55 * (30+4) + 172 / (80 - 2 + 4*2*(-3+4)) - ((1035+1) - 1) - 1)"; // -1700
 	std::cout << "formula: " + inputExpression + "\n";
 
-	constexpr unsigned testsCount = 50000;
+	constexpr unsigned testsCount = 80000;
 
 	const auto beginTime1 = std::chrono::high_resolution_clock::now();
 	float val1;
@@ -364,7 +367,7 @@ int main()
 
 	const auto beginTime2 = std::chrono::high_resolution_clock::now();
 
-	float val2;
+	float val2 = 0.f;
 	for (unsigned i = 0; i < testsCount; i++)
 	{
 		const auto result = CalcExpertk(inputExpression);
